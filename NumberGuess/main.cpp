@@ -7,7 +7,7 @@
 
 using namespace std;
 
-int populationSize = 500; // keep this an even number
+int populationSize = 500;
 
 int RandInt(int r_min = numeric_limits <int>::min(), int r_max = numeric_limits <int>::max()) {
 	static random_device rd;
@@ -28,6 +28,7 @@ int fitness(int num, int target) {
 
 	if (t_sign != n_sign) score += 100000;
 
+	// integer overflow
 	if (score < 0) score = numeric_limits <int> :: max();
 
 	return score;
@@ -45,7 +46,7 @@ vector <int> crossover(unsigned int a, unsigned int b) {
 	};
 }
 
-// mutates nth bit from the end
+// flips nth bit from the end
 int mutate(unsigned int a) {
 	unsigned int index = RandInt(0, 8 * sizeof(int) - 1);
 
@@ -58,11 +59,13 @@ int geneReplace(unsigned int a) {
 	unsigned int uMax = numeric_limits <unsigned int> :: max();
 
     int res;
+	// for positive numbers replace a left section with zeroes
     if ((int)a >= 0) {
         res = static_cast <int> (
             a & (~(uMax << index))
         );
     }
+	// for negative numbers replace a right side with zeroes
     else {
         res = static_cast <int> (
             a & (~(uMax >> index))
@@ -74,23 +77,12 @@ int geneReplace(unsigned int a) {
 
 // evolve the old population to a  new one
 void newGeneration(vector <int> &old, int target) {
-	// sort the old population by fitness value
-	sort(old.begin(), old.end(), [&](int a, int b) {
-		return fitness(a, target) < fitness(b, target);
-	});
-
 	int pHalf = populationSize / 2;
 
 	// specific mutation
 	// flip the sign of the chromosome if that results into a better score
-	for (int i = 0; i < pHalf / 2; i++) {
+	for (int i = 0; i < pHalf; i++) {
 		if (fitness(old[i], target) > fitness(-old[i], target)) old[i] = -old[i];
-	}
-
-	// mutate the second half of the old generations
-	for (int i = pHalf / 2; i < pHalf; i ++) {
-		// 5% chance of mutation
-		if (RandInt(0, 20) == 1) old[i] = mutate(old[i]);
 	}
 
 	// only keep the first 50 of the population and add two children per consecutive pair
@@ -114,16 +106,31 @@ void newGeneration(vector <int> &old, int target) {
 
 		j += 2;
 	}
+
+	// 5% chance of mutation for the old population
+	for (int i = 0; i < pHalf; i++) {
+		// 5% chance of mutation
+		if (RandInt(0, 20) == 1) old[i] = mutate(old[i]);
+	}
+
+	// sort the old population by fitness value
+	sort(old.begin(), old.end(), [&](int a, int b) {
+		return fitness(a, target) < fitness(b, target);
+	});
 }
 
 int main() {
-	int target = numeric_limits <int> :: max() / 10000000;
-	vector <int> population;
+	// --------target number goes here--------------
+	int target = numeric_limits <int> :: max() / 100;
 	
 	// generate a random poppulation
+	vector <int> population;
 	for (int i = 0; i < populationSize; i++) {
 		population.push_back(RandInt());
 	}
+	sort(population.begin(), population.end(), [&](int a, int b) {
+		return fitness(a, target) < fitness(b, target);
+	});
 
 	// evolve iteratively
 	for (int i = 0; i < 100; i++) {
